@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>moe-gguf-server API</title>
+    <link rel="stylesheet" href="./swagger-ui.css">
+    <style>
+      * { box-sizing: border-box; min-width: 0; overflow-wrap: anywhere; }
+      body { margin: 0; width: 100%; }
+      pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+      .swagger-ui .wrapper { max-width: 100%; }
+      .swagger-ui table { display: block; max-width: 100%; overflow-x: auto; }
+      @media (max-width: 639px) {
+        .swagger-ui .wrapper { padding: 0 0.5rem; }
+        .swagger-ui .opblock-summary { flex-wrap: wrap; }
+        .swagger-ui .opblock-summary-path { max-width: 100%; }
+        .swagger-ui pre { padding: 0.5rem; font-size: 0.7rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="./swagger-ui-bundle.js"></script>
+    <script>
+      window.onload = function fInitializeDocumentation() {
+        SwaggerUIBundle({
+          url: './openapi.json',
+          dom_id: '#swagger-ui',
+          deepLinking: true,
+          validatorUrl: null,
+          persistAuthorization: false
+        });
+      };
+    </script>
+  </body>
+</html>

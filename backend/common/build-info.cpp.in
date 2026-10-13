@@ -1,0 +1,24 @@
+#include "build-info.h"
+
+#include <cstdio>
+
+static const char *const cVersion = "@MGS_VERSION@";
+static const char *const cCompiler = "@BUILD_COMPILER@";
+static const char *const cBuildTarget = "@BUILD_TARGET@";
+
+const char * mgs_version(void) {
+  return cVersion;
+}
+
+const char * mgs_compiler(void) {
+  return cCompiler;
+}
+
+const char * mgs_build_target(void) {
+  return cBuildTarget;
+}
+
+void mgs_print_build_info(void) {
+  fprintf(stderr, "%s: version = %s\n", __func__, mgs_version());
+  fprintf(stderr, "%s: built with %s for %s\n", __func__, mgs_compiler(), mgs_build_target());
+}

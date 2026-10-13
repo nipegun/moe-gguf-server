@@ -1,0 +1,18 @@
+#!/sbin/openrc-run
+
+# OpenRC's interpreter and exported hook names are framework interfaces.
+name="moe-gguf-server"
+description="moe-gguf-server inference server"
+command="@BINARY@"
+command_args="--http --host 127.0.0.1 --port 8080 --api-prefix /api --api-key-file /opt/moe-gguf-server/.mgs/config/api.key --models-dir /opt/moe-gguf-server/models"
+command_user="moe-gguf-server:moe-gguf-server"
+command_background=true
+pidfile="/run/moe-gguf-server.pid"
+directory="/opt/moe-gguf-server"
+output_log="/var/log/moe-gguf-server.log"
+error_log="/var/log/moe-gguf-server.log"
+export HOME="/opt/moe-gguf-server"
+
+depend() {
+  need net
+}

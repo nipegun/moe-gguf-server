@@ -1,0 +1,19 @@
+[Unit]
+Description=moe-gguf-server inference server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=moe-gguf-server
+Group=moe-gguf-server
+WorkingDirectory=/opt/moe-gguf-server
+Environment=HOME=/opt/moe-gguf-server
+ExecStart="@BINARY@" --http --host 127.0.0.1 --port 8080 --api-prefix /api --api-key-file /opt/moe-gguf-server/.mgs/config/api.key --models-dir /opt/moe-gguf-server/models
+Restart=on-failure
+RestartSec=5
+LimitMEMLOCK=infinity
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

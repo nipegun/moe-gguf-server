@@ -1,0 +1,72 @@
+ServerRoot /opt/moe-gguf-server/.mgs/config
+DefaultRuntimeDir /opt/moe-gguf-server/_/temp/web
+PidFile /opt/moe-gguf-server/_/temp/web/apache2.pid
+Mutex file:/opt/moe-gguf-server/_/temp/web default
+ServerName @DOMAIN@
+ServerTokens Prod
+ServerSignature Off
+ErrorLog /opt/moe-gguf-server/_/temp/web/error.log
+LogLevel warn
+
+<IfModule !mpm_event_module>
+  LoadModule mpm_event_module @MODULE_DIRECTORY@/mod_mpm_event.so
+</IfModule>
+<IfModule !unixd_module>
+  LoadModule unixd_module @MODULE_DIRECTORY@/mod_unixd.so
+</IfModule>
+<IfModule !log_config_module>
+  LoadModule log_config_module @MODULE_DIRECTORY@/mod_log_config.so
+</IfModule>
+LoadModule authz_core_module @MODULE_DIRECTORY@/mod_authz_core.so
+LoadModule authz_host_module @MODULE_DIRECTORY@/mod_authz_host.so
+LoadModule alias_module @MODULE_DIRECTORY@/mod_alias.so
+LoadModule headers_module @MODULE_DIRECTORY@/mod_headers.so
+LoadModule ssl_module @MODULE_DIRECTORY@/mod_ssl.so
+LoadModule proxy_module @MODULE_DIRECTORY@/mod_proxy.so
+LoadModule proxy_http_module @MODULE_DIRECTORY@/mod_proxy_http.so
+
+User moe-gguf-server
+Group moe-gguf-server
+LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
+Listen @HTTP_PORT@ http
+Listen @HTTPS_PORT@ https
+
+<VirtualHost *:@HTTP_PORT@>
+  ServerName @DOMAIN@
+  DocumentRoot /var/www/@DOMAIN@
+  ServerAdmin admin@@DOMAIN@
+  Redirect permanent / https://@DOMAIN@:@HTTPS_PORT@/
+  Header always set Cache-Control "no-store"
+  ErrorLog /var/www/@DOMAIN@-logs/error.log
+  CustomLog /var/www/@DOMAIN@-logs/access.log combined
+  <Directory "/var/www/@DOMAIN@">
+    Require all granted
+    Options FollowSymLinks
+    AllowOverride All
+  </Directory>
+</VirtualHost>
+
+<IfModule mod_ssl.c>
+  <VirtualHost *:@HTTPS_PORT@>
+    ServerName @DOMAIN@
+    DocumentRoot /var/www/@DOMAIN@
+    ServerAdmin admin@@DOMAIN@
+    ErrorLog /var/www/@DOMAIN@-logs/error.log
+    CustomLog /var/www/@DOMAIN@-logs/access.log combined
+    SSLEngine On
+    SSLCertificateFile /opt/moe-gguf-server/certificates/fullchain.pem
+    SSLCertificateKeyFile /opt/moe-gguf-server/certificates/privkey.pem
+    SSLProtocol -all +TLSv1.2 +TLSv1.3
+    <Directory "/var/www/@DOMAIN@">
+      Require all granted
+      Options FollowSymLinks
+      AllowOverride All
+    </Directory>
+    ProxyRequests Off
+    ProxyPreserveHost On
+    ProxyTimeout 3600
+    ProxyPass / http://127.0.0.1:8080/ connectiontimeout=5 timeout=3600
+    ProxyPassReverse / http://127.0.0.1:8080/
+    RequestHeader set X-Forwarded-Proto "https"
+  </VirtualHost>
+</IfModule>

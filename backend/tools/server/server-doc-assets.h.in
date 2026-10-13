@@ -1,0 +1,6 @@
+#pragma once
+
+// Generated from the vendored Swagger UI distribution and the local viewer.
+static const char cSwaggerScript[] = R"MGS_DOC(@vSwaggerScript@)MGS_DOC";
+static const char cSwaggerStyle[] = R"MGS_DOC(@vSwaggerStyle@)MGS_DOC";
+static const char cSwaggerPage[] = R"MGS_DOC(@vSwaggerPage@)MGS_DOC";
