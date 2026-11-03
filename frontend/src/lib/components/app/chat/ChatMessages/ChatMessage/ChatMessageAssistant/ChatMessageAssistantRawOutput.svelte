@@ -1,0 +1,40 @@
+<script lang="ts">
+  import { fDeriveAgenticSections, fBuildAssistantRawOutput } from '$lib/utils';
+
+  interface Props {
+    message: DatabaseMessage;
+    toolMessages?: DatabaseMessage[];
+  }
+
+  let { message: vMessage, toolMessages: vToolMessages = [] }: Props = $props();
+
+  let vRawOutputContent = $derived.by(() => {
+    const cSections = fDeriveAgenticSections(vMessage, vToolMessages, [], false);
+    return fBuildAssistantRawOutput(cSections);
+  });
+</script>
+
+<pre class="raw-output">{vRawOutputContent || ''}</pre>
+
+<style>
+  .raw-output {
+    width: 100%;
+    max-width: 48rem;
+    margin-top: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 1rem;
+    background: hsl(var(--muted) / 0.3);
+    color: var(--foreground);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 639px) {
+    .raw-output {
+      padding: 0.5rem;
+      font-size: 0.7rem;
+    }
+  }
+</style>

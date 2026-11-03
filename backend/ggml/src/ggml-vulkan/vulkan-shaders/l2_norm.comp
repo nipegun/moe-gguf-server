@@ -1,0 +1,71 @@
+#version 450
+
+#include "generic_unary_head.glsl"
+#include "types.glsl"
+
+#extension GL_EXT_control_flow_attributes : enable
+#if USE_SUBGROUP_ADD
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#endif
+
+// the host picks a block size of 128, 256 or 512 from the row length, so short rows do not leave most
+// invocations idle through a 512-wide reduction
+layout (constant_id = 0) const int BLOCK_SIZE = 512;
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
+
+shared FLOAT_TYPE sumsh[BLOCK_SIZE];
+
+void main() {
+  const uint row = gl_WorkGroupID.z * 262144 + gl_WorkGroupID.y * 512 + gl_WorkGroupID.x;
+  const uint tid = gl_LocalInvocationID.x;
+
+  const uint a_base = get_aoffset() + src0_idx(row * p.ne00);
+  const uint d_base = get_doffset() + dst_idx(row * p.ne10);
+
+  FLOAT_TYPE sum = FLOAT_TYPE(0.0f); // partial sum for thread in warp
+
+  [[unroll]] for (uint i0 = tid; i0 < p.ne00; i0 += BLOCK_SIZE) {
+    const FLOAT_TYPE xi = FLOAT_TYPE(data_a[a_base + i0*p.nb00]);
+    sum += xi * xi;
+  }
+
+#if USE_SUBGROUP_ADD
+  sum = subgroupAdd(sum);
+  if (subgroupElect()) {
+    sumsh[gl_SubgroupID] = sum;
+  }
+  barrier();
+  sum = FLOAT_TYPE(0.0f);
+  if (gl_NumSubgroups <= 4) {
+    // few subgroups: every invocation adds the partial sums, without a second subgroupAdd
+    [[unroll]] for (uint i = 0; i < gl_NumSubgroups; ++i) {
+      sum += sumsh[i];
+    }
+  } else {
+    // each subgroup reads the partial sums, so one workgroup barrier is enough
+    for (uint i = gl_SubgroupInvocationID; i < gl_NumSubgroups; i += gl_SubgroupSize) {
+      sum += sumsh[i];
+    }
+    sum = subgroupAdd(sum);
+  }
+#else
+  sumsh[tid] = sum;
+  // sum up partial sums and write back result
+  barrier();
+  [[unroll]] for (int s = BLOCK_SIZE / 2; s > 0; s >>= 1) {
+    if (tid < s) {
+      sum += sumsh[tid + s];
+      sumsh[tid] = sum;
+    }
+    barrier();
+  }
+  sum = sumsh[0];
+#endif
+
+  const FLOAT_TYPE scale = 1.0f / max(sqrt(sum), FLOAT_TYPE(p.param1));
+
+  [[unroll]] for (uint i0 = tid; i0 < p.ne00; i0 += BLOCK_SIZE) {
+    data_d[d_base + i0*p.nb10] = D_TYPE(scale * FLOAT_TYPE(data_a[a_base + i0*p.nb00]));
+  }
+}

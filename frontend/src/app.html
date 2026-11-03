@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <script src="/api/config.js"></script>
+    <script>
+      // The color mode goes on <html> before the first paint: the theme setting that
+      // /api/config.js publishes, or "system" (the default of the settings registry) when none is
+      // saved. src/lib/stores/theme.svelte.ts keeps it up to date afterwards.
+      {
+        const cTheme = globalThis.cUiTheme;
+        const cIsDark =
+          cTheme === 'dark' ||
+          (cTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', cIsDark);
+        document.documentElement.style.colorScheme = cIsDark ? 'dark' : 'light';
+      }
+    </script>
+    <link rel="icon" href="favicon.ico" sizes="48x48" />
+    <link rel="icon" href="favicon.svg" sizes="any" type="image/svg+xml" />
+
+    <link rel="apple-touch-icon" href="apple-touch-icon-180x180.png" />
+
+    <link rel="manifest" href="./manifest.webmanifest" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
+    />
+    %sveltekit.head%
+  </head>
+
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>

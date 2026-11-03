@@ -1,0 +1,19 @@
+#!/sbin/openrc-run
+
+# OpenRC interpreter and hook names are framework interfaces.
+name="moe-gguf-server-web"
+description="moe-gguf-server web frontend with automatic ports"
+command="/bin/bash"
+command_args="/usr/local/libexec/moe-gguf-server/start-web.sh"
+command_user="moe-gguf-server:moe-gguf-server"
+command_background=true
+pidfile="/run/moe-gguf-server-web.pid"
+directory="/opt/moe-gguf-server"
+output_log="/var/log/moe-gguf-server-web.log"
+error_log="/var/log/moe-gguf-server-web.log"
+retry="TERM/30/KILL/5"
+
+depend() {
+  need net
+  use moe-gguf-server
+}

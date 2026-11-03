@@ -1,0 +1,84 @@
+#version 450
+
+#include "generic_head.glsl"
+#include "types.glsl"
+
+#extension GL_EXT_control_flow_attributes : enable
+
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
+
+layout (binding = 0) readonly buffer A {A_TYPE data_a[];};
+#ifdef FUSED
+// AMAX_POW2 fused with the DIV that scales its rows (and with the MUL that puts the factor into the expert weights):
+// p.param2 is 1 to also write the factor and 2 to write the scaled weights instead.
+layout (binding = 1) readonly buffer W {float data_w[];};
+layout (binding = 2) writeonly buffer D {D_TYPE data_d[];};
+layout (binding = 3) writeonly buffer DW {float data_dw[];};
+layout (binding = 4) writeonly buffer DX {float data_dx[];};
+#else
+layout (binding = 1) writeonly buffer D {D_TYPE data_d[];};
+#endif
+
+layout (constant_id = 0) const uint BLOCK_SIZE = 32;
+
+shared float tmpmax[BLOCK_SIZE];
+
+// Same value as fGgmlAmaxPow2F32 on the CPU: 2^clamp(ceil(log2(amax / threshold)), 0, 127) from the bits of the ratio.
+float amax_pow2(const float amax, const float threshold) {
+  const float ratio = amax / threshold;
+  if (!(ratio > 1.0)) {
+    return 1.0;
+  }
+  const uint bits = floatBitsToUint(ratio);
+  int e = int((bits >> 23) & 0xFFu) - 127;
+  if ((bits & 0x7FFFFFu) != 0u) {
+    e += 1;
+  }
+  e = min(e, 127);
+  return uintBitsToFloat(uint(e + 127) << 23);
+}
+
+void main() {
+  const uint row = gl_WorkGroupID.z * 262144 + gl_WorkGroupID.y * 512 + gl_WorkGroupID.x;
+  const uint col = gl_LocalInvocationID.x;
+
+  if (row >= p.KY) {
+    return;
+  }
+
+  float amax = 0.0;
+  for (uint i = col; i < p.KX; i += BLOCK_SIZE) {
+    amax = max(amax, abs(float(data_a[row*p.KX + i])));
+  }
+
+  tmpmax[col] = amax;
+
+  barrier();
+  [[unroll]] for (int s = int(BLOCK_SIZE) / 2; s > 0; s >>= 1) {
+    if (col < s) {
+      tmpmax[col] = max(tmpmax[col], tmpmax[col + s]);
+    }
+    barrier();
+  }
+
+#ifdef FUSED
+  const float scale = amax_pow2(tmpmax[0], p.param1);
+
+  // every invocation scales the values it read above, so the output may alias the input exactly
+  for (uint i = col; i < p.KX; i += BLOCK_SIZE) {
+    data_dx[row*p.KX + i] = float(data_a[row*p.KX + i]) / scale;
+  }
+
+  if (col == 0) {
+    if (p.param2 == 2.0) {
+      data_dw[row] = data_w[row] * scale;
+    } else {
+      data_d[row] = D_TYPE(scale);
+    }
+  }
+#else
+  if (col == 0) {
+    data_d[row] = D_TYPE(amax_pow2(tmpmax[0], p.param1));
+  }
+#endif
+}
